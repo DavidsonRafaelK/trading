@@ -1,0 +1,7 @@
+.DS_Store
+._*
+.env
+*.env
+config.local.yaml
+config.local.json
+.vscode/
