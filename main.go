@@ -12,6 +12,12 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const (
+	Reset = "\033[0m"
+	Green = "\033[32m"
+	Red = "\033[31m"
+)
+
 type TradeData struct {
 	Coin string `json:"coin"`
 	Side string `json:"side"`
@@ -73,7 +79,25 @@ func main() {
 
 				for _, trade := range trades {
 					t := time.UnixMilli(trade.Time).Format("15:04:05.000")
-					fmt.Printf("%-20s | %-10s | %-10s | %-10s | %-20s\n", trade.Coin, trade.Side, trade.Px, trade.Sz, t)
+
+					var sideText string
+					var colorCode string
+
+					if trade.Side == "B" {
+						sideText = "BUY"
+						colorCode = Green
+					} else {
+						sideText = "SELL"
+						colorCode = Red
+					}
+					
+					fmt.Printf("%-20s | %s%-10s%s | %s%-10s%s | %-10s | %-20s\n", 
+						trade.Coin, 
+						colorCode, sideText, Reset,
+						colorCode, trade.Px, Reset, 
+						trade.Sz, 
+						t,
+					)
 				}
 			}
 		}
