@@ -12,6 +12,19 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type TradeData struct {
+	Coin string `json:"coin"`
+	Side string `json:"side"`
+	Px string `json:"px"`
+	Sz string `json:"sz"`
+	Time int64 `json:"time"`
+}
+
+type WSResponse struct {
+	Channel string `json:"channel"`
+	Data json.RawMessage `json:"data"`
+}
+
 func main() {
 	u := url.URL{
 		Scheme: "wss",
@@ -30,6 +43,7 @@ func main() {
 	defer conn.Close()
 	fmt.Println("Connected to WebSocket server")
 
+	fmt.Printf("%-20s | %-10s | %-10s | %-10s | %-20s\n", "Coin", "Side", "Price", "Size (USDC)", "Time")
 	// Start a goroutine to read messages from the WebSocket
 	go func() {
 		for {
@@ -38,7 +52,30 @@ func main() {
 				log.Println("Failed to read message:", err)
 				return
 			}
-			fmt.Printf("Data masuk: %s\n\n", string(message)) // output akan berupa JSON string (TODO: bisa diubah ke struct)
+			
+			// Unmarshal the message into a WSResponse struct
+			var response WSResponse
+			err = json.Unmarshal(message, &response)
+			if err != nil {
+				log.Println("Failed to unmarshal message:", err)
+				continue
+			}
+
+			// Check if the channel is "trades" and unmarshal the data into a slice of TradeData
+			if response.Channel == "trades" {
+				var trades []TradeData
+				err = json.Unmarshal(response.Data, &trades)
+
+				if err != nil {
+					log.Println("Failed to unmarshal trade data:", err)
+					continue
+				}
+
+				for _, trade := range trades {
+					t := time.UnixMilli(trade.Time).Format("15:04:05.000")
+					fmt.Printf("%-20s | %-10s | %-10s | %-10s | %-20s\n", trade.Coin, trade.Side, trade.Px, trade.Sz, t)
+				}
+			}
 		}
 	}()
 
@@ -47,7 +84,7 @@ func main() {
 		"method": "subscribe",
 		"subscription": map[string]interface{}{
 			"type": "trades",
-			"coin": "BTC",
+			"coin": "BTC", // TODO: make this dynamic based on user input or configuration (FUTURE WORK)
 		},
 	}
 
@@ -63,7 +100,6 @@ func main() {
 		fmt.Println("Error sending subscription message:", err)
 		return
 	}
-	fmt.Println("Subscription message sent")
 
 	// Wait for an interrupt signal to gracefully shut down
 	interrupt := make(chan os.Signal, 1)
@@ -78,5 +114,4 @@ func main() {
 		fmt.Println("Error setting read deadline:", err)
 		return
 	}
-	time.Sleep(1 * time.Second)
 }
